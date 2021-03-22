@@ -1,0 +1,30 @@
+// StringEncryption.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include <iostream>
+#include <string>
+using namespace std;
+
+int main()
+{
+	string PlainText;
+	cout << "Enter the Plain Text:" << endl;
+	cin >> PlainText;
+
+	char Secret_Key; 
+	cout << "Enter the Secret Key." << endl;
+	cin >> Secret_Key;
+
+	for (int temp = 0; temp < PlainText.size(); temp++)
+		PlainText[temp] ^= Secret_Key;
+	cout << "The Encrypted Data: " << PlainText << endl;
+
+	for (int temp = 0; temp < PlainText.size(); temp++)
+		PlainText[temp] ^= Secret_Key; //notice we're using the exact same key, to unencrypt the data.
+	cout << "The Unencrypted Data: " << PlainText << endl;
+	system("pause");
+
+    return 0;
+}
+

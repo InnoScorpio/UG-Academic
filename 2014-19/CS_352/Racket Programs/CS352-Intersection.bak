@@ -1,0 +1,10 @@
+#lang racket
+(define (intersection a b)
+  (if (null? a)
+      '()
+      (if (contains (car a) b)
+          (cons (car a) (intersection (cdr a) b))
+          (intersection (cdr a) b))))
+(define contains member)
+
+

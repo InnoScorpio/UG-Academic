@@ -1,0 +1,15 @@
+symdiff :-
+    L = ['a', 'b', 'c', 'c', 'd'],
+    M = ['x', 'b', 'c', 'y', 'z'],
+    format('L : ~w~n', [L]),
+    format('M : ~w~n', [M]),
+    list_to_set(L, SL),
+    list_to_set(M, SM),
+    format('set from L : ~w~n', [SL]),
+    format('set from M : ~w~n', [SM]),
+    subtract(SL, SM, DLM),
+    format('difference L\\M : ~w~n', [DLM]),
+    subtract(SM, SL, DML),
+    format('difference M\\L : ~w~n', [DML]),
+    union(DLM, DML, Diff),
+    format('symetric difference : ~w~n', [Diff]).

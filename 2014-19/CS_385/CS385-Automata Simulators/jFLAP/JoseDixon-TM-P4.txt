@@ -1,0 +1,29 @@
+//-------CONFIGURATION
+name: Jose-CS385-P4: One's complement
+init: q0
+accept: q3
+
+//-------DELTA FUNCTION:
+q0,0
+q1,1,>
+
+q0,1
+q1,0,>
+
+q1,0
+q1,1,>
+
+q1,1
+q1,0,>
+
+q1,_
+q2,_,<
+
+q2,0
+q2,0,<
+
+q2,1
+q2,1,<
+
+q2,_
+q3,_,>

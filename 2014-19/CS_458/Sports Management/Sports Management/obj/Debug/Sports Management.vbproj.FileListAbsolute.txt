@@ -1,0 +1,47 @@
+C:\Users\Sushanth\Documents\Visual Studio 2008\projects\Sports Management\Sports Management\bin\Debug\Sports Management.exe
+C:\Users\Sushanth\Documents\Visual Studio 2008\projects\Sports Management\Sports Management\bin\Debug\Sports Management.pdb
+C:\Users\Sushanth\Documents\Visual Studio 2008\projects\Sports Management\Sports Management\bin\Debug\Sports Management.xml
+C:\Users\Sushanth\Documents\Visual Studio 2008\projects\Sports Management\Sports Management\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\Sushanth\Documents\Visual Studio 2008\projects\Sports Management\Sports Management\obj\Debug\Sports_Management.Form1.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\projects\Sports Management\Sports Management\obj\Debug\Sports_Management.Resources.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\projects\Sports Management\Sports Management\obj\Debug\Sports Management.vbproj.GenerateResource.Cache
+C:\Users\Sushanth\Documents\Visual Studio 2008\projects\Sports Management\Sports Management\obj\Debug\Sports Management.exe
+C:\Users\Sushanth\Documents\Visual Studio 2008\projects\Sports Management\Sports Management\obj\Debug\Sports Management.xml
+C:\Users\Sushanth\Documents\Visual Studio 2008\projects\Sports Management\Sports Management\obj\Debug\Sports Management.pdb
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmstudentreg.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\bin\Debug\Interop.ADODB.dll
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\bin\Debug\Interop.ADOMD.dll
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Interop.ADODB.dll
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Interop.ADOMD.dll
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports Management.vbproj.ResolveComReference.cache
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmloginreg.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmtour.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmcplyr.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmfplyr.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmhockeyplyr.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmvolleyplr.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmbad.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmbasket.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmcollege.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmcrtour.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmfttour.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmbadtour.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmbaskettour.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmhtour.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmvltour.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmbest.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmstate.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmlogin1.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmwelcome.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmfootballphotos.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmcrphotos.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmvophotos.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmbadphoto.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmbasketphotos.resources
+C:\Users\Sushanth\Documents\Visual Studio 2008\Projects\Sports Management\Sports Management\obj\Debug\Sports_Management.frmhopho.resources
+C:\Supritha all projects\Sports Management\Sports Management\Sports Management\obj\Debug\Interop.ADODB.dll
+C:\Supritha all projects\Sports Management\Sports Management\Sports Management\obj\Debug\Interop.ADOMD.dll
+C:\Supritha all projects\Sports Management\Sports Management\Sports Management\obj\Debug\Sports Management.vbproj.ResolveComReference.cache
+C:\Supritha all projects\Sports Management\Sports Management\Sports Management\obj\Debug\Sports Management.exe
+C:\Supritha all projects\Sports Management\Sports Management\Sports Management\obj\Debug\Sports Management.xml
+C:\Supritha all projects\Sports Management\Sports Management\Sports Management\obj\Debug\Sports Management.pdb

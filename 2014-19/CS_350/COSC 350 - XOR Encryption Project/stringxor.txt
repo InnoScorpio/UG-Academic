@@ -1,0 +1,21 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Oct 12 00:03:14 2017
+
+@author: Jose Dixon
+"""
+
+plain_text = (raw_input("Enter in the plain text :")) 
+secret_key = (raw_input("Enter in the secret key :"))
+
+def str_xor(s1, s2):
+ return "".join([chr(ord(c1) ^ ord(c2)) for (c1,c2) in zip(s1,s2)])
+
+
+encrypt_text = str_xor(secret_key, plain_text)
+print("The encrypted text:", encrypt_text)
+
+
+decrypt_text = str_xor(encrypt_text, secret_key)
+print("The decrypted text:", decrypt_text)
+

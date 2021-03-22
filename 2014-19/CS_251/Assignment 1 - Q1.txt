@@ -1,0 +1,21 @@
+Assignment 1 - Question #1 
+"""
+Created on Sat Sep 10 15:51:19 2016
+# Assignment 1 - Q1
+@author: Jose Dixon
+"""
+x = int (input("Input the first number: ")) 
+y = int (input("Input the second number: "))
+total = x + y 
+diff = x - y 
+pro = x * y
+quot = x / y 
+avg = (x + y)/2 
+print "The sum is ", total
+print "The difference is ", diff
+print "The product is ", pro
+print "The quotient is ", quot
+print "The average is " , avg
+print "The distance of is ", abs(diff)
+print "The maximum value of the two numbers is ", max (x,y)
+print "The minimum value of the two numbers is ", min (x,y)

@@ -1,0 +1,1226 @@
+5 ADVERSARIAL SEARCH
+In which we examine the problems that arise when we try to plan ahead in a world
+where other agents are planning against us.
+
+5.1 GAMES
+
+Chapter 2 introduced multiagent environments, in which each agent needs to consider the
+actions of other agents and how they affect its own welfare. The unpredictability of these
+other agents can introduce contingencies into the agent’s problem-solving process, as dis-
+cussed in Chapter 4. In this chapter we cover competitive environments, in which the agents’
+GAME goals are in con?ict, giving rise to adversarial search problems—often known as games.
+Mathematical game theory, a branch of economics, views any multiagent environment
+as a game, provided that the impact of each agent on the others is “signi?cant,” regardless
+of whether the agents are cooperative or competitive.1 In AI, the most common games are
+of a rather specialized kind—what game theorists call deterministic, turn-taking, two-player,
+ZERO-SUM GAMES zero-sum games of perfect information (such as chess). In our terminology, this means
+PERFECT
+INFORMATION deterministic, fully observable environments in which two agents act alternately and in which
+the utility values at the end of the game are always equal and opposite. For example, if one
+player wins a game of chess, the other player necessarily loses. It is this opposition between
+the agents’ utility functions that makes the situation adversarial.
+Games have engaged the intellectual faculties of humans—sometimes to an alarming
+degree—for as long as civilization has existed. For AI researchers, the abstract nature of
+games makes them an appealing subject for study. The state of a game is easy to represent,
+and agents are usually restricted to a small number of actions whose outcomes are de?ned by
+precise rules. Physical games, such as croquet and ice hockey, have much more complicated
+descriptions, a much larger range of possible actions, and rather imprecise rules de?ning
+the legality of actions. With the exception of robot soccer, these physical games have not
+attracted much interest in the AI community.
+1 Environments with very many agents are often viewed as economies rather than games.
+
+161
+
+
+162 Chapter 5. Adversarial Search
+
+Games, unlike most of the toy problems studied in Chapter 3, are interesting because
+they are too hard to solve. For example, chess has an average branching factor of about 35,
+and games often go to 50 moves by each player, so the search tree has about 35100 or 10154
+nodes (although the search graph has “only” about 1040 distinct nodes). Games, like the real
+world, therefore require the ability to make some decision even when calculating the optimal
+decision is infeasible. Games also penalize inef?ciency severely. Whereas an implementation
+of A* search that is half as ef?cient will simply take twice as long to run to completion, a chess
+program that is half as ef?cient in using its available time probably will be beaten into the
+ground, other things being equal. Game-playing research has therefore spawned a number of
+interesting ideas on how to make the best possible use of time.
+We begin with a de?nition of the optimal move and an algorithm for ?nding it. We
+PRUNING then look at techniques for choosing a good move when time is limited. Pruning allows us
+to ignore portions of the search tree that make no difference to the ?nal choice, and heuristic
+evaluation functions allow us to approximate the true utility of a state without doing a com-
+plete search. Section 5.5 discusses games such as backgammon that include an element of
+IMPERFECT chance; we also discuss bridge, which includes elements of imperfect information because
+
+INFORMATION
+
+not all cards are visible to each player. Finally, we look at how state-of-the-art game-playing
+programs fare against human opposition and at directions for future developments.
+We ?rst consider games with two players, whom we call MAX and MIN for reasons that
+will soon become obvious. MAX moves ?rst, and then they take turns moving until the game
+is over. At the end of the game, points are awarded to the winning player and penalties are
+given to the loser. A game can be formally de?ned as a kind of search problem with the
+following elements:
+• S0: The initial state, which speci?es how the game is set up at the start.
+• PLAYER(s): De?nes which player has the move in a state.
+• ACTIONS(s): Returns the set of legal moves in a state.
+• RESULT(s, a): The transition model, which de?nes the result of a move.
+TERMINAL TEST • TERMINAL-TEST(s): A terminal test, which is true when the game is over and false
+TERMINAL STATES otherwise. States where the game has ended are called terminal states.
+• UTILITY(s, p): A utility function (also called an objective function or payoff function),
+de?nes the ?nal numeric value for a game that ends in terminal state s for a player p. In
+chess, the outcome is a win, loss, or draw, with values +1, 0, or 21. Some games have a
+wider variety of possible outcomes; the payoffs in backgammon range from 0 to +192.
+A zero-sum game is (confusingly) de?ned as one where the total payoff to all players
+is the same for every instance of the game. Chess is zero-sum because every game has
+payoff of either 0 + 1, 1 + 0 or 21 + 21. “Constant-sum” would have been a better term,
+but zero-sum is traditional and makes sense if you imagine each player is charged an
+entry fee of 21.
+GAME TREE The initial state, ACTIONS function, and RESULT function de?ne the game tree for the
+game—a tree where the nodes are game states and the edges are moves. Figure 5.1 shows
+part of the game tree for tic-tac-toe (noughts and crosses). From the initial state, MAX has
+nine possible moves. Play alternates between MAX’s placing an X and MIN’s placing an O
+
+
+Section 5.2. Optimal Decisions in Games 163
+
+until we reach leaf nodes corresponding to terminal states such that one player has three in
+a row or all the squares are ?lled. The number on each leaf node indicates the utility value
+of the terminal state from the point of view of MAX; high values are assumed to be good for
+MAX and bad for MIN (which is how the players get their names).
+For tic-tac-toe the game tree is relatively small—fewer than 9! = 362, 880 terminal
+nodes. But for chess there are over 1040 nodes, so the game tree is best thought of as a
+theoretical construct that we cannot realize in the physical world. But regardless of the size
+SEARCH TREE of the game tree, it is MAX’s job to search for a good move. We use the term search tree for a
+tree that is superimposed on the full game tree, and examines enough nodes to allow a player
+to determine what move to make.
+
+
+Figure 5.1 A (partial) game tree for the game of tic-tac-toe. The top node is the initial
+state, and MAX moves ?rst, placing an X in an empty square. We show part of the tree, giving
+alternating moves by MIN (O) and MAX (X), until we eventually reach terminal states, which
+can be assigned utilities according to the rules of the game.
+
+5.2 OPTIMAL DECISIONS IN GAMES
+
+In a normal search problem, the optimal solution would be a sequence of actions leading to
+a goal state—a terminal state that is a win. In adversarial search, MIN has something to say
+STRATEGY about it. MAX therefore must ?nd a contingent strategy, which speci?es MAX’s move in
+the initial state, then MAX’s moves in the states resulting from every possible response by
+
+
+164 Chapter 5. Adversarial Search
+
+
+
+Figure 5.2 A two-ply game tree. The ? nodes are “MAX nodes,” in which it is MAX’s
+turn to move, and the ? nodes are “MIN nodes.” The terminal nodes show the utility values
+for MAX; the other nodes are labeled with their minimax values. MAX’s best move at the root
+is a1, because it leads to the state with the highest minimax value, and MIN’s best reply is b1,
+because it leads to the state with the lowest minimax value.
+
+MIN, then MAX’s moves in the states resulting from every possible response by MIN to those
+moves, and so on. This is exactly analogous to the AND–OR search algorithm (Figure 4.11)
+with MAX playing the role of OR and MIN equivalent to AND. Roughly speaking, an optimal
+strategy leads to outcomes at least as good as any other strategy when one is playing an
+infallible opponent. We begin by showing how to ?nd this optimal strategy.
+Even a simple game like tic-tac-toe is too complex for us to draw the entire game tree
+on one page, so we will switch to the trivial game in Figure 5.2. The possible moves for MAX
+at the root node are labeled a1, a2, and a3. The possible replies to a1 for MIN are b1, b2,
+b3, and so on. This particular game ends after one move each by MAX and MIN. (In game
+parlance, we say that this tree is one move deep, consisting of two half-moves, each of which
+PLY is called a ply.) The utilities of the terminal states in this game range from 2 to 14.
+MINIMAX VALUE Given a game tree, the optimal strategy can be determined from the minimax value
+of each node, which we write as MINIMAX(n). The minimax value of a node is the utility
+(for MAX) of being in the corresponding state, assuming that both players play optimally
+from there to the end of the game. Obviously, the minimax value of a terminal state is just
+its utility. Furthermore, given a choice, MAX prefers to move to a state of maximum value,
+whereas MIN prefers a state of minimum value. So we have the following:
+MINIMAX(s) =
+
+??? UTILITY(s) if TERMINAL-TEST(s)
+
+maxa?Actions(s) MINIMAX(RESULT(s, a)) if PLAYER(s) = MAX
+mina?Actions(s) MINIMAX(RESULT(s, a)) if PLAYER(s) = MIN
+Let us apply these de?nitions to the game tree in Figure 5.2. The terminal nodes on the bottom
+level get their utility values from the game’s UTILITY function. The ?rst MIN node, labeled
+B, has three successor states with values 3, 12, and 8, so its minimax value is 3. Similarly,
+the other two MIN nodes have minimax value 2. The root node is a MAX node; its successor
+states have minimax values 3, 2, and 2; so it has a minimax value of 3. We can also identify
+
+
+Section 5.2. Optimal Decisions in Games 165
+
+MINIMAX DECISION the minimax decision at the root: action a1 is the optimal choice for MAX because it leads to
+the state with the highest minimax value.
+This de?nition of optimal play for MAX assumes that MIN also plays optimally—it
+maximizes the worst-case outcome for MAX. What if MIN does not play optimally? Then it is
+easy to show (Exercise 5.7) that MAX will do even better. Other strategies against suboptimal
+opponents may do better than the minimax strategy, but these strategies necessarily do worse
+against optimal opponents.
+
+5.2.1 The minimax algorithm
+MINIMAX ALGORITHM The minimax algorithm (Figure 5.3) computes the minimax decision from the current state.
+It uses a simple recursive computation of the minimax values of each successor state, directly
+implementing the de?ning equations. The recursion proceeds all the way down to the leaves
+of the tree, and then the minimax values are backed up through the tree as the recursion
+unwinds. For example, in Figure 5.2, the algorithm ?rst recurses down to the three bottom-
+left nodes and uses the UTILITY function on them to discover that their values are 3, 12, and
+8, respectively. Then it takes the minimum of these values, 3, and returns it as the backed-
+up value of node B. A similar process gives the backed-up values of 2 for C and 2 for D.
+Finally, we take the maximum of 3, 2, and 2 to get the backed-up value of 3 for the root node.
+The minimax algorithm performs a complete depth-?rst exploration of the game tree.
+If the maximum depth of the tree is m and there are b legal moves at each point, then the
+time complexity of the minimax algorithm is O(b m). The space complexity is O(bm) for an
+algorithm that generates all actions at once, or O(m) for an algorithm that generates actions
+one at a time (see page 87). For real games, of course, the time cost is totally impractical,
+but this algorithm serves as the basis for the mathematical analysis of games and for more
+practical algorithms.
+
+5.2.2 Optimal decisions in multiplayer games
+Many popular games allow more than two players. Let us examine how to extend the minimax
+idea to multiplayer games. This is straightforward from the technical viewpoint, but raises
+some interesting new conceptual issues.
+First, we need to replace the single value for each node with a vector of values. For
+example, in a three-player game with players A, B, and C, a vector vA, vB, vC is associated
+with each node. For terminal states, this vector gives the utility of the state from each player’s
+viewpoint. (In two-player, zero-sum games, the two-element vector can be reduced to a single
+value because the values are always opposite.) The simplest way to implement this is to have
+the UTILITY function return a vector of utilities.
+Now we have to consider nonterminal states. Consider the node marked X in the game
+tree shown in Figure 5.4. In that state, player C chooses what to do. The two choices lead
+to terminal states with utility vectors vA = 1, vB = 2, vC = 6 and vA = 4, vB = 2, vC = 3.
+Since 6 is bigger than 3, C should choose the ?rst move. This means that if state X is reached,
+subsequent play will lead to a terminal state with utilities vA = 1, vB = 2, vC = 6. Hence,
+the backed-up value of X is this vector. The backed-up value of a node n is always the utility
+
+
+166 Chapter 5. Adversarial Search
+
+function MINIMAX-DECISION(state) returns an action
+return arg maxa ? ACTIONS(s) MIN-VALUE(RESULT(state, a))
+function MAX-VALUE(state) returns a utility value
+if TERMINAL-TEST(state) then return UTILITY(state)
+v ? -8
+
+for each a in ACTIONS(state) do
+v ? MAX(v, MIN-VALUE(RESULT(s, a)))
+
+return v
+
+function MIN-VALUE(state) returns a utility value
+if TERMINAL-TEST(state) then return UTILITY(state)
+v ? 8
+
+for each a in ACTIONS(state) do
+v ? MIN(v, MAX-VALUE(RESULT(s, a)))
+
+return v
+
+Figure 5.3 An algorithm for calculating minimax decisions. It returns the action corre-
+sponding to the best possible move, that is, the move that leads to the outcome with the
+best utility, under the assumption that the opponent plays to minimize utility. The functions
+MAX-VALUE and MIN-VALUE go through the whole game tree, all the way to the leaves,
+to determine the backed-up value of a state. The notation argmaxa ? S f(a) computes the
+element a of set S that has the maximum value of f(a).
+
+
+
+Figure 5.4 The ?rst three plies of a game tree with three players (A, B, C). Each node is
+labeled with values from the viewpoint of each player. The best move is marked at the root.
+
+vector of the successor state with the highest value for the player choosing at n. Anyone
+who plays multiplayer games, such as Diplomacy, quickly becomes aware that much more
+ALLIANCE is going on than in two-player games. Multiplayer games usually involve alliances, whether
+formal or informal, among the players. Alliances are made and broken as the game proceeds.
+How are we to understand such behavior? Are alliances a natural consequence of optimal
+strategies for each player in a multiplayer game? It turns out that they can be. For example,
+
+
+Section 5.3. Alpha–Beta Pruning 167
+
+suppose A and B are in weak positions and C is in a stronger position. Then it is often
+optimal for both A and B to attack C rather than each other, lest C destroy each of them
+individually. In this way, collaboration emerges from purely sel?sh behavior. Of course,
+as soon as C weakens under the joint onslaught, the alliance loses its value, and either A
+or B could violate the agreement. In some cases, explicit alliances merely make concrete
+what would have happened anyway. In other cases, a social stigma attaches to breaking an
+alliance, so players must balance the immediate advantage of breaking an alliance against the
+long-term disadvantage of being perceived as untrustworthy. See Section 17.5 for more on
+these complications.
+If the game is not zero-sum, then collaboration can also occur with just two players.
+Suppose, for example, that there is a terminal state with utilities vA = 1000, vB = 1000 and
+that 1000 is the highest possible utility for each player. Then the optimal strategy is for both
+players to do everything possible to reach this state—that is, the players will automatically
+cooperate to achieve a mutually desirable goal.
+
+5.3 ALPHA–BETA PRUNING
+
+The problem with minimax search is that the number of game states it has to examine is
+exponential in the depth of the tree. Unfortunately, we can’t eliminate the exponent, but it
+turns out we can effectively cut it in half. The trick is that it is possible to compute the correct
+minimax decision without looking at every node in the game tree. That is, we can borrow the
+idea of pruning from Chapter 3 to eliminate large parts of the tree from consideration. The
+ALPHA–BETA particular technique we examine is called alpha–beta pruning. When applied to a standard
+
+PRUNING
+
+minimax tree, it returns the same move as minimax would, but prunes away branches that
+cannot possibly in?uence the ?nal decision.
+Consider again the two-ply game tree from Figure 5.2. Let’s go through the calculation
+of the optimal decision once more, this time paying careful attention to what we know at
+each point in the process. The steps are explained in Figure 5.5. The outcome is that we can
+identify the minimax decision without ever evaluating two of the leaf nodes.
+Another way to look at this is as a simpli?cation of the formula for MINIMAX. Let the
+two unevaluated successors of node C in Figure 5.5 have values x and y. Then the value of
+the root node is given by
+MINIMAX(root) = max(min(3, 12, 8), min(2, x, y), min(14, 5, 2))
+= max(3, min(2, x, y), 2)
+= max(3, z, 2) where z = min(2, x, y) = 2
+= 3.
+In other words, the value of the root and hence the minimax decision are independent of the
+values of the pruned leaves x and y.
+Alpha–beta pruning can be applied to trees of any depth, and it is often possible to
+prune entire subtrees rather than just leaves. The general principle is this: consider a node n
+
+
+168 Chapter 5. Adversarial Search
+
+
+
+Figure 5.5 Stages in the calculation of the optimal decision for the game tree in Figure 5.2.
+At each point, we show the range of possible values for each node. (a) The ?rst leaf below B
+has the value 3. Hence, B, which is a MIN node, has a value of at most 3. (b) The second leaf
+below B has a value of 12; MIN would avoid this move, so the value of B is still at most 3.
+(c) The third leaf below B has a value of 8; we have seen all B’s successor states, so the
+value of B is exactly 3. Now, we can infer that the value of the root is at least 3, because
+MAX has a choice worth 3 at the root. (d) The ?rst leaf below C has the value 2. Hence,
+C, which is a MIN node, has a value of at most 2. But we know that B is worth 3, so MAX
+would never choose C. Therefore, there is no point in looking at the other successor states
+of C. This is an example of alpha–beta pruning. (e) The ?rst leaf below D has the value 14,
+so D is worth at most 14. This is still higher than MAX’s best alternative (i.e., 3), so we need
+to keep exploring D’s successor states. Notice also that we now have bounds on all of the
+successors of the root, so the root’s value is also at most 14. (f) The second successor of D
+is worth 5, so again we need to keep exploring. The third successor is worth 2, so now D is
+worth exactly 2. MAX’s decision at the root is to move to B, giving a value of 3.
+
+somewhere in the tree (see Figure 5.6), such that Player has a choice of moving to that node.
+If Player has a better choice m either at the parent node of n or at any choice point further up,
+then n will never be reached in actual play. So once we have found out enough about n (by
+examining some of its descendants) to reach this conclusion, we can prune it.
+Remember that minimax search is depth-?rst, so at any one time we just have to con-
+sider the nodes along a single path in the tree. Alpha–beta pruning gets its name from the
+following two parameters that describe bounds on the backed-up values that appear anywhere
+along the path:
+
+
+Section 5.3. Alpha–Beta Pruning 169
+
+
+
+Figure 5.6 The general case for alpha–beta pruning. If m is better than n for Player, we
+will never get to n in play.
+
+a = the value of the best (i.e., highest-value) choice we have found so far at any choice point
+along the path for MAX.
+ß = the value of the best (i.e., lowest-value) choice we have found so far at any choice point
+along the path for MIN.
+Alpha–beta search updates the values of a and ß as it goes along and prunes the remaining
+branches at a node (i.e., terminates the recursive call) as soon as the value of the current
+node is known to be worse than the current a or ß value for MAX or MIN, respectively. The
+complete algorithm is given in Figure 5.7. We encourage you to trace its behavior when
+applied to the tree in Figure 5.5.
+5.3.1 Move ordering
+The effectiveness of alpha–beta pruning is highly dependent on the order in which the states
+are examined. For example, in Figure 5.5(e) and (f), we could not prune any successors of D
+at all because the worst successors (from the point of view of MIN) were generated ?rst. If
+the third successor of D had been generated ?rst, we would have been able to prune the other
+two. This suggests that it might be worthwhile to try to examine ?rst the successors that are
+likely to be best.
+If this can be done,2 then it turns out that alpha–beta needs to examine only O(bm/2)
+nodes to pick the best move, instead of O(bm) for minimax. This means that the effective
+branching factor becomes vb instead of b—for chess, about 6 instead of 35. Put another
+way, alpha–beta can solve a tree roughly twice as deep as minimax in the same amount of
+time. If successors are examined in random order rather than best-?rst, the total number of
+nodes examined will be roughly O(b3m/4) for moderate b. For chess, a fairly simple ordering
+function (such as trying captures ?rst, then threats, then forward moves, and then backward
+moves) gets you to within about a factor of 2 of the best-case O(bm/2) result.
+2 Obviously, it cannot be done perfectly; otherwise, the ordering function could be used to play a perfect game!
+
+
+170 Chapter 5. Adversarial Search
+
+function ALPHA-BETA-SEARCH(state) returns an action
+v ? MAX-VALUE(state, -8, +8)
+
+return the action in ACTIONS(state) with value v
+
+function MAX-VALUE(state, a, ß) returns a utility value
+if TERMINAL-TEST(state) then return UTILITY(state)
+v ? -8
+
+for each a in ACTIONS(state) do
+vif?v MAX(v, MIN-VALUE(RESULT(s,a), a, ß))
+a ? =MAß then return v
+
+X(a, v)
+
+return v
+
+function MIN-VALUE(state, a, ß) returns a utility value
+if TERMINAL-TEST(state) then return UTILITY(state)
+v ? +8
+
+for each a in ACTIONS(state) do
+v ? MIN(v, MAX-VALUE(RESULT(s,a) , a, ß))
+if v = a then return v
+ß ? MIN(ß, v)
+
+return v
+
+Figure 5.7 The alpha–beta search algorithm. Notice that these routines are the same as
+the MINIMAX functions in Figure 5.3, except for the two lines in each of MIN-VALUE and
+MAX-VALUE that maintain a and ß (and the bookkeeping to pass these parameters along).
+
+Adding dynamic move-ordering schemes, such as trying ?rst the moves that were found
+to be best in the past, brings us quite close to the theoretical limit. The past could be the
+previous move—often the same threats remain—or it could come from previous exploration
+of the current move. One way to gain information from the current move is with iterative
+deepening search. First, search 1 ply deep and record the best path of moves. Then search
+1 ply deeper, but use the recorded path to inform move ordering. As we saw in Chapter 3,
+iterative deepening on an exponential game tree adds only a constant fraction to the total
+search time, which can be more than made up from better move ordering. The best moves are
+KILLER MOVES often called killer moves and to try them ?rst is called the killer move heuristic.
+In Chapter 3, we noted that repeated states in the search tree can cause an exponential
+increase in search cost. In many games, repeated states occur frequently because of transpo-
+TRANSPOSITION sitions—different permutations of the move sequence that end up in the same position. For
+example, if White has one move, a1, that can be answered by Black with b1 and an unre-
+lated move a2 on the other side of the board that can be answered by b2, then the sequences
+[a1, b1, a2, b2] and [a2, b2, a1, b1] both end up in the same position. It is worthwhile to store
+the evaluation of the resulting position in a hash table the ?rst time it is encountered so that
+we don’t have to recompute it on subsequent occurrences. The hash table of previously seen
+TTRANSPOSITION positions is traditionally called a transposition table; it is essentially identical to the explored
+
+ABLE
+
+
+Section 5.4. Imperfect Real-Time Decisions 171
+
+list in GRAPH-SEARCH (Section 3.3). Using a transposition table can have a dramatic effect,
+sometimes as much as doubling the reachable search depth in chess. On the other hand, if we
+are evaluating a million nodes per second, at some point it is not practical to keep all of them
+in the transposition table. Various strategies have been used to choose which nodes to keep
+and which to discard.
+
+5.4 IMPERFECT REAL-TIME DECISIONS
+
+The minimax algorithm generates the entire game search space, whereas the alpha–beta algo-
+rithm allows us to prune large parts of it. However, alpha–beta still has to search all the way
+to terminal states for at least a portion of the search space. This depth is usually not practical,
+because moves must be made in a reasonable amount of time—typically a few minutes at
+most. Claude Shannon’s paper Programming a Computer for Playing Chess (1950) proposed
+instead that programs should cut off the search earlier and apply a heuristic evaluation func-
+EVALUATION tion to states in the search, effectively turning nonterminal nodes into terminal leaves. In
+
+FUNCTION
+
+other words, the suggestion is to alter minimax or alpha–beta in two ways: replace the utility
+function by a heuristic evaluation function EVAL, which estimates the position’s utility, and
+CUTOFF TEST replace the terminal test by a cutoff test that decides when to apply EVAL. That gives us the
+following for heuristic minimax for state s and maximum depth d:
+H-MINIMAX(s, d) =
+
+??? EVAL(s) if CUTOFF-TEST(s, d)
+
+maxa?Actions(s) H-MINIMAX(RESULT(s, a), d + 1) if PLAYER(s) = MAX
+mina?Actions(s) H-MINIMAX(RESULT(s, a), d + 1) if PLAYER(s) = MIN.
+5.4.1 Evaluation functions
+An evaluation function returns an estimate of the expected utility of the game from a given
+position, just as the heuristic functions of Chapter 3 return an estimate of the distance to
+the goal. The idea of an estimator was not new when Shannon proposed it. For centuries,
+chess players (and a?cionados of other games) have developed ways of judging the value of
+a position because humans are even more limited in the amount of search they can do than
+are computer programs. It should be clear that the performance of a game-playing program
+depends strongly on the quality of its evaluation function. An inaccurate evaluation function
+will guide an agent toward positions that turn out to be lost. How exactly do we design good
+evaluation functions?
+First, the evaluation function should order the terminal states in the same way as the
+true utility function: states that are wins must evaluate better than draws, which in turn must
+be better than losses. Otherwise, an agent using the evaluation function might err even if it
+can see ahead all the way to the end of the game. Second, the computation must not take
+too long! (The whole point is to search faster.) Third, for nonterminal states, the evaluation
+function should be strongly correlated with the actual chances of winning.
+
+
+172 Chapter 5. Adversarial Search
+
+One might well wonder about the phrase “chances of winning.” After all, chess is not a
+game of chance: we know the current state with certainty, and no dice are involved. But if the
+search must be cut off at nonterminal states, then the algorithm will necessarily be uncertain
+about the ?nal outcomes of those states. This type of uncertainty is induced by computational,
+rather than informational, limitations. Given the limited amount of computation that the
+evaluation function is allowed to do for a given state, the best it can do is make a guess about
+the ?nal outcome.
+Let us make this idea more concrete. Most evaluation functions work by calculating
+various features of the state—for example, in chess, we would have features for the number
+of white pawns, black pawns, white queens, black queens, and so on. The features, taken
+together, de?ne various categories or equivalence classes of states: the states in each category
+have the same values for all the features. For example, one category contains all two-pawn
+vs. one-pawn endgames. Any given category, generally speaking, will contain some states
+that lead to wins, some that lead to draws, and some that lead to losses. The evaluation
+function cannot know which states are which, but it can return a single value that re?ects the
+proportion of states with each outcome. For example, suppose our experience suggests that
+72% of the states encountered in the two-pawns vs. one-pawn category lead to a win (utility
++1); 20% to a loss (0), and 8% to a draw (1/2). Then a reasonable evaluation for states in
+EXPECTED VALUE the category is the expected value: (0.72 × +1) + (0.20 × 0) + (0.08 × 1/2) = 0.76. In
+principle, the expected value can be determined for each category, resulting in an evaluation
+function that works for any state. As with terminal states, the evaluation function need not
+return actual expected values as long as the ordering of the states is the same.
+In practice, this kind of analysis requires too many categories and hence too much
+experience to estimate all the probabilities of winning. Instead, most evaluation functions
+compute separate numerical contributions from each feature and then combine them to ?nd
+MATERIAL VALUE the total value. For example, introductory chess books give an approximate material value
+for each piece: each pawn is worth 1, a knight or bishop is worth 3, a rook 5, and the queen 9.
+Other features such as “good pawn structure” and “king safety” might be worth half a pawn,
+say. These feature values are then simply added up to obtain the evaluation of the position.
+A secure advantage equivalent to a pawn gives a substantial likelihood of winning, and
+a secure advantage equivalent to three pawns should give almost certain victory, as illustrated
+in Figure 5.8(a). Mathematically, this kind of evaluation function is called a weighted linear
+WEIGHTED LINEAR function because it can be expressed as
+
+FUNCTION
+
+EVAL(s) = w1f1(s) + w2f2(s) + · · · + wnfn(s) =
+
+n
+
+i=1
+
+wifi(s) ,
+
+where each wi is a weight and each fi is a feature of the position. For chess, the fi could be
+the numbers of each kind of piece on the board, and the wi could be the values of the pieces
+(1 for pawn, 3 for bishop, etc.).
+Adding up the values of features seems like a reasonable thing to do, but in fact it
+involves a strong assumption: that the contribution of each feature is independent of the
+values of the other features. For example, assigning the value 3 to a bishop ignores the fact
+that bishops are more powerful in the endgame, when they have a lot of space to maneuver.
+
+
+Section 5.4. Imperfect Real-Time Decisions 173
+
+(a) White to move (b) White to move
+
+Figure 5.8 Two chess positions that differ only in the position of the rook at lower right.
+In (a), Black has an advantage of a knight and two pawns, which should be enough to win
+the game. In (b), White will capture the queen, giving it an advantage that should be strong
+enough to win.
+
+For this reason, current programs for chess and other games also use nonlinear combinations
+of features. For example, a pair of bishops might be worth slightly more than twice the value
+of a single bishop, and a bishop is worth more in the endgame (that is, when the move number
+feature is high or the number of remaining pieces feature is low).
+The astute reader will have noticed that the features and weights are not part of the rules
+of chess! They come from centuries of human chess-playing experience. In games where this
+kind of experience is not available, the weights of the evaluation function can be estimated
+by the machine learning techniques of Chapter 18. Reassuringly, applying these techniques
+to chess has con?rmed that a bishop is indeed worth about three pawns.
+5.4.2 Cutting off search
+The next step is to modify ALPHA-BETA-SEARCH so that it will call the heuristic EVAL
+function when it is appropriate to cut off the search. We replace the two lines in Figure 5.7
+that mention TERMINAL-TEST with the following line:
+if CUTOFF-TEST(state, depth) then return EVAL(state)
+We also must arrange for some bookkeeping so that the current depth is incremented on each
+recursive call. The most straightforward approach to controlling the amount of search is to set
+a ?xed depth limit so that CUTOFF-TEST(state, depth) returns true for all depth greater than
+some ?xed depth d. (It must also return true for all terminal states, just as TERMINAL-TEST
+did.) The depth d is chosen so that a move is selected within the allocated time. A more
+robust approach is to apply iterative deepening. (See Chapter 3.) When time runs out, the
+program returns the move selected by the deepest completed search. As a bonus, iterative
+deepening also helps with move ordering.
+
+
+174 Chapter 5. Adversarial Search
+
+These simple approaches can lead to errors due to the approximate nature of the eval-
+uation function. Consider again the simple evaluation function for chess based on material
+advantage. Suppose the program searches to the depth limit, reaching the position in Fig-
+ure 5.8(b), where Black is ahead by a knight and two pawns. It would report this as the
+heuristic value of the state, thereby declaring that the state is a probable win by Black. But
+White’s next move captures Black’s queen with no compensation. Hence, the position is
+really won for White, but this can be seen only by looking ahead one more ply.
+Obviously, a more sophisticated cutoff test is needed. The evaluation function should be
+QUIESCENCE applied only to positions that are quiescent—that is, unlikely to exhibit wild swings in value
+in the near future. In chess, for example, positions in which favorable captures can be made
+are not quiescent for an evaluation function that just counts material. Nonquiescent positions
+can be expanded further until quiescent positions are reached. This extra search is called a
+QUIESCENCE quiescence search; sometimes it is restricted to consider only certain types of moves, such
+
+SEARCH
+
+as capture moves, that will quickly resolve the uncertainties in the position.
+HORIZON EFFECT The horizon effect is more dif?cult to eliminate. It arises when the program is facing
+an opponent’s move that causes serious damage and is ultimately unavoidable, but can be
+temporarily avoided by delaying tactics. Consider the chess game in Figure 5.9. It is clear
+that there is no way for the black bishop to escape. For example, the white rook can capture
+it by moving to h1, then a1, then a2; a capture at depth 6 ply. But Black does have a sequence
+of moves that pushes the capture of the bishop “over the horizon.” Suppose Black searches
+to depth 8 ply. Most moves by Black will lead to the eventual capture of the bishop, and thus
+will be marked as “bad” moves. But Black will consider checking the white king with the
+pawn at e4. This will lead to the king capturing the pawn. Now Black will consider checking
+again, with the pawn at f5, leading to another pawn capture. That takes up 4 ply, and from
+there the remaining 4 ply is not enough to capture the bishop. Black thinks that the line of
+play has saved the bishop at the price of two pawns, when actually all it has done is push the
+inevitable capture of the bishop beyond the horizon that Black can see.
+SINGULAR One strategy to mitigate the horizon effect is the singular extension, a move that is
+
+EXTENSION
+
+“clearly better” than all other moves in a given position. Once discovered anywhere in the
+tree in the course of a search, this singular move is remembered. When the search reaches the
+normal depth limit, the algorithm checks to see if the singular extension is a legal move; if it
+is, the algorithm allows the move to be considered. This makes the tree deeper, but because
+there will be few singular extensions, it does not add many total nodes to the tree.
+
+5.4.3 Forward pruning
+So far, we have talked about cutting off search at a certain level and about doing alpha–
+beta pruning that provably has no effect on the result (at least with respect to the heuristic
+FORWARD PRUNING evaluation values). It is also possible to do forward pruning, meaning that some moves at
+a given node are pruned immediately without further consideration. Clearly, most humans
+playing chess consider only a few moves from each position (at least consciously). One
+BEAM SEARCH approach to forward pruning is beam search: on each ply, consider only a “beam” of the n
+best moves (according to the evaluation function) rather than considering all possible moves.
+
+
+Section 5.4. Imperfect Real-Time Decisions 175
+
+Figure 5.9 The horizon effect. With Black to move, the black bishop is surely doomed.
+But Black can forestall that event by checking the white king with its pawns, forcing the king
+to capture the pawns. This pushes the inevitable loss of the bishop over the horizon, and thus
+the pawn sacri?ces are seen by the search algorithm as good moves rather than bad ones.
+
+Unfortunately, this approach is rather dangerous because there is no guarantee that the best
+move will not be pruned away.
+The PROBCUT, or probabilistic cut, algorithm (Buro, 1995) is a forward-pruning ver-
+sion of alpha–beta search that uses statistics gained from prior experience to lessen the chance
+that the best move will be pruned. Alpha–beta search prunes any node that is provably out-
+side the current (a, ß) window. PROBCUT also prunes nodes that are probably outside the
+window. It computes this probability by doing a shallow search to compute the backed-up
+value v of a node and then using past experience to estimate how likely it is that a score of v
+at depth d in the tree would be outside (a, ß). Buro applied this technique to his Othello pro-
+gram, LOGISTELLO, and found that a version of his program with PROBCUT beat the regular
+version 64% of the time, even when the regular version was given twice as much time.
+Combining all the techniques described here results in a program that can play cred-
+itable chess (or other games). Let us assume we have implemented an evaluation function for
+chess, a reasonable cutoff test with a quiescence search, and a large transposition table. Let
+us also assume that, after months of tedious bit-bashing, we can generate and evaluate around
+a million nodes per second on the latest PC, allowing us to search roughly 200 million nodes
+per move under standard time controls (three minutes per move). The branching factor for
+chess is about 35, on average, and 355 is about 50 million, so if we used minimax search,
+we could look ahead only about ?ve plies. Though not incompetent, such a program can be
+fooled easily by an average human chess player, who can occasionally plan six or eight plies
+ahead. With alpha–beta search we get to about 10 plies, which results in an expert level of
+play. Section 5.8 describes additional pruning techniques that can extend the effective search
+depth to roughly 14 plies. To reach grandmaster status we would need an extensively tuned
+evaluation function and a large database of optimal opening and endgame moves.
+
+
+176 Chapter 5. Adversarial Search
+
+5.4.4 Search versus lookup
+
+Somehow it seems like overkill for a chess program to start a game by considering a tree of a
+billion game states, only to conclude that it will move its pawn to e4. Books describing good
+play in the opening and endgame in chess have been available for about a century (Tattersall,
+1911). It is not surprising, therefore, that many game-playing programs use table lookup
+rather than search for the opening and ending of games.
+For the openings, the computer is mostly relying on the expertise of humans. The best
+advice of human experts on how to play each opening is copied from books and entered into
+tables for the computer’s use. However, computers can also gather statistics from a database
+of previously played games to see which opening sequences most often lead to a win. In
+the early moves there are few choices, and thus much expert commentary and past games on
+which to draw. Usually after ten moves we end up in a rarely seen position, and the program
+must switch from table lookup to search.
+Near the end of the game there are again fewer possible positions, and thus more chance
+to do lookup. But here it is the computer that has the expertise: computer analysis of
+endgames goes far beyond anything achieved by humans. A human can tell you the gen-
+eral strategy for playing a king-and-rook-versus-king (KRK) endgame: reduce the opposing
+king’s mobility by squeezing it toward one edge of the board, using your king to prevent the
+opponent from escaping the squeeze. Other endings, such as king, bishop, and knight versus
+king (KBNK), are dif?cult to master and have no succinct strategy description. A computer,
+POLICY on the other hand, can completely solve the endgame by producing a policy, which is a map-
+ping from every possible state to the best move in that state. Then we can just look up the best
+move rather than recompute it anew. How big will the KBNK lookup table be? It turns out
+there are 462 ways that two kings can be placed on the board without being adjacent. After
+the kings are placed, there are 62 empty squares for the bishop, 61 for the knight, and two
+possible players to move next, so there are just 462 × 62 × 61 × 2 = 3, 494, 568 possible
+RETROGRADE positions. Some of these are checkmates; mark them as such in a table. Then do a retrograde
+minimax search: reverse the rules of chess to do unmoves rather than moves. Any move by
+White that, no matter what move Black responds with, ends up in a position marked as a win,
+must also be a win. Continue this search until all 3,494,568 positions are resolved as win,
+loss, or draw, and you have an infallible lookup table for all KBNK endgames.
+Using this technique and a tour de force of optimization tricks, Ken Thompson (1986,
+1996) and Lewis Stiller (1992, 1996) solved all chess endgames with up to ?ve pieces and
+some with six pieces, making them available on the Internet. Stiller discovered one case
+where a forced mate existed but required 262 moves; this caused some consternation because
+the rules of chess require a capture or pawn move to occur within 50 moves. Later work by
+Marc Bourzutschky and Yakov Konoval (Bourzutschky, 2006) solved all pawnless six-piece
+and some seven-piece endgames; there is a KQNKRBN endgame that with best play requires
+517 moves until a capture, which then leads to a mate.
+If we could extend the chess endgame tables from 6 pieces to 32, then White would
+know on the opening move whether it would be a win, loss, or draw. This has not happened
+so far for chess, but it has happened for checkers, as explained in the historical notes section.
+
+
+Section 5.5. Stochastic Games 177
+
+5.5 STOCHASTIC GAMES
+
+In real life, many unpredictable external events can put us into unforeseen situations. Many
+games mirror this unpredictability by including a random element, such as the throwing of
+STOCHASTIC GAMES dice. We call these stochastic games. Backgammon is a typical game that combines luck
+and skill. Dice are rolled at the beginning of a player’s turn to determine the legal moves. In
+the backgammon position of Figure 5.10, for example, White has rolled a 6–5 and has four
+possible moves.
+
+Figure 5.10 A typical backgammon position. The goal of the game is to move all one’s
+pieces off the board. White moves clockwise toward 25, and Black moves counterclockwise
+toward 0. A piece can move to any position unless multiple opponent pieces are there; if there
+is one opponent, it is captured and must start over. In the position shown, White has rolled
+6–5 and must choose among four legal moves: (5–10,5–11), (5–11,19–24), (5–10,10–16),
+and (5–11,11–16), where the notation (5–11,11–16) means move one piece from position 5
+to 11, and then move a piece from 11 to 16.
+
+Although White knows what his or her own legal moves are, White does not know what
+Black is going to roll and thus does not know what Black’s legal moves will be. That means
+White cannot construct a standard game tree of the sort we saw in chess and tic-tac-toe. A
+CHANCE NODES game tree in backgammon must include chance nodes in addition to MAX and MIN nodes.
+Chance nodes are shown as circles in Figure 5.11. The branches leading from each chance
+node denote the possible dice rolls; each branch is labeled with the roll and its probability.
+There are 36 ways to roll two dice, each equally likely; but because a 6–5 is the same as a 5–6,
+there are only 21 distinct rolls. The six doubles (1–1 through 6–6) each have a probability of
+1/36, so we say P (1–1) = 1/36. The other 15 distinct rolls each have a 1/18 probability.
+
+
+178 Chapter 5. Adversarial Search
+
+
+
+Figure 5.11 Schematic game tree for a backgammon position.
+
+The next step is to understand how to make correct decisions. Obviously, we still want
+to pick the move that leads to the best position. However, positions do not have de?nite
+EXPECTED VALUE minimax values. Instead, we can only calculate the expected value of a position: the average
+over all possible outcomes of the chance nodes.
+This leads us to generalize the minimax value for deterministic games to an expecti-
+VEXPECTIMINIMAX minimax value for games with chance nodes. Terminal nodes and MAX and MIN nodes (for
+
+ALUE
+
+which the dice roll is known) work exactly the same way as before. For chance nodes we
+compute the expected value, which is the sum of the value over all outcomes, weighted by
+the probability of each chance action:
+EXPECTIMINIMAX(s) =
+
+
+
+UTILITY(s) if TERMINAL-TEST(s)
+maxa EXPECTIMINIMAX(RESULT(s, a)) if PLAYER(s) = MAX
+mina EXPECTIMINIMAX(RESULT(s, a)) if PLAYER(s) = MIN
+r P(r)EXPECTIMINIMAX(RESULT(s, r)) if PLAYER(s) = CHANCE
+where r represents a possible dice roll (or other chance event) and RESULT(s, r) is the same
+state as s, with the additional fact that the result of the dice roll is r.
+
+5.5.1 Evaluation functions for games of chance
+As with minimax, the obvious approximation to make with expectiminimax is to cut the
+search off at some point and apply an evaluation function to each leaf. One might think that
+evaluation functions for games such as backgammon should be just like evaluation functions
+
+
+Section 5.5. Stochastic Games 179
+
+for chess—they just need to give higher scores to better positions. But in fact, the presence of
+chance nodes means that one has to be more careful about what the evaluation values mean.
+Figure 5.12 shows what happens: with an evaluation function that assigns the values [1, 2,
+3, 4] to the leaves, move a1 is best; with values [1, 20, 30, 400], move a2 is best. Hence,
+the program behaves totally differently if we make a change in the scale of some evaluation
+values! It turns out that to avoid this sensitivity, the evaluation function must be a positive
+linear transformation of the probability of winning from a position (or, more generally, of the
+expected utility of the position). This is an important and general property of situations in
+which uncertainty is involved, and we discuss it further in Chapter 16.
+
+
+Figure 5.12 An order-preserving transformation on leaf values changes the best move.
+
+If the program knew in advance all the dice rolls that would occur for the rest of the
+game, solving a game with dice would be just like solving a game without dice, which mini-
+max does in O(bm) time, where b is the branching factor and m is the maximum depth of the
+game tree. Because expectiminimax is also considering all the possible dice-roll sequences,
+it will take O(bmnm), where n is the number of distinct rolls.
+Even if the search depth is limited to some small depth d, the extra cost compared with
+that of minimax makes it unrealistic to consider looking ahead very far in most games of
+chance. In backgammon n is 21 and b is usually around 20, but in some situations can be as
+high as 4000 for dice rolls that are doubles. Three plies is probably all we could manage.
+Another way to think about the problem is this: the advantage of alpha–beta is that
+it ignores future developments that just are not going to happen, given best play. Thus, it
+concentrates on likely occurrences. In games with dice, there are no likely sequences of
+moves, because for those moves to take place, the dice would ?rst have to come out the right
+way to make them legal. This is a general problem whenever uncertainty enters the picture:
+the possibilities are multiplied enormously, and forming detailed plans of action becomes
+pointless because the world probably will not play along.
+It may have occurred to you that something like alpha–beta pruning could be applied
+
+
+180 Chapter 5. Adversarial Search
+
+to game trees with chance nodes. It turns out that it can. The analysis for MIN and MAX
+nodes is unchanged, but we can also prune chance nodes, using a bit of ingenuity. Consider
+the chance node C in Figure 5.11 and what happens to its value as we examine and evaluate
+its children. Is it possible to ?nd an upper bound on the value of C before we have looked
+at all its children? (Recall that this is what alpha–beta needs in order to prune a node and its
+subtree.) At ?rst sight, it might seem impossible because the value of C is the average of its
+children’s values, and in order to compute the average of a set of numbers, we must look at
+all the numbers. But if we put bounds on the possible values of the utility function, then we
+can arrive at bounds for the average without looking at every number. For example, say that
+all utility values are between -2 and +2; then the value of leaf nodes is bounded, and in turn
+we can place an upper bound on the value of a chance node without looking at all its children.
+MONTE CARLO An alternative is to do Monte Carlo simulation to evaluate a position. Start with
+
+SIMULATION
+
+an alpha–beta (or other) search algorithm. From a start position, have the algorithm play
+thousands of games against itself, using random dice rolls. In the case of backgammon, the
+resulting win percentage has been shown to be a good approximation of the value of the
+position, even if the algorithm has an imperfect heuristic and is searching only a few plies
+ROLLOUT (Tesauro, 1995). For games with dice, this type of simulation is called a rollout.
+
+5.6 PARTIALLY OBSERVABLE GAMES
+
+Chess has often been described as war in miniature, but it lacks at least one major charac-
+teristic of real wars, namely, partial observability. In the “fog of war,” the existence and
+disposition of enemy units is often unknown until revealed by direct contact. As a result,
+warfare includes the use of scouts and spies to gather information and the use of concealment
+and bluff to confuse the enemy. Partially observable games share these characteristics and
+are thus qualitatively different from the games described in the preceding sections.
+
+5.6.1 Kriegspiel: Partially observable chess
+In deterministic partially observable games, uncertainty about the state of the board arises en-
+tirely from lack of access to the choices made by the opponent. This class includes children’s
+games such as Battleships (where each player’s ships are placed in locations hidden from the
+opponent but do not move) and Stratego (where piece locations are known but piece types are
+KRIEGSPIEL hidden). We will examine the game of Kriegspiel, a partially observable variant of chess in
+which pieces can move but are completely invisible to the opponent.
+The rules of Kriegspiel are as follows: White and Black each see a board containing
+only their own pieces. A referee, who can see all the pieces, adjudicates the game and period-
+ically makes announcements that are heard by both players. On his turn, White proposes to
+the referee any move that would be legal if there were no black pieces. If the move is in fact
+not legal (because of the black pieces), the referee announces “illegal.” In this case, White
+may keep proposing moves until a legal one is found—and learns more about the location of
+Black’s pieces in the process. Once a legal move is proposed, the referee announces one or
+
+
+Section 5.6. Partially Observable Games 181
+
+more of the following: “Capture on square X” if there is a capture, and “Check by D” if the
+black king is in check, where D is the direction of the check, and can be one of “Knight,”
+“Rank,” “File,” “Long diagonal,” or “Short diagonal.” (In case of discovered check, the ref-
+eree may make two “Check” announcements.) If Black is checkmated or stalemated, the
+referee says so; otherwise, it is Black’s turn to move.
+Kriegspiel may seem terrifyingly impossible, but humans manage it quite well and com-
+puter programs are beginning to catch up. It helps to recall the notion of a belief state as
+de?ned in Section 4.4 and illustrated in Figure 4.14—the set of all logically possible board
+states given the complete history of percepts to date. Initially, White’s belief state is a sin-
+gleton because Black’s pieces haven’t moved yet. After White makes a move and Black re-
+sponds, White’s belief state contains 20 positions because Black has 20 replies to any White
+move. Keeping track of the belief state as the game progresses is exactly the problem of state
+estimation, for which the update step is given in Equation (4.6). We can map Kriegspiel
+state estimation directly onto the partially observable, nondeterministic framework of Sec-
+tion 4.4 if we consider the opponent as the source of nondeterminism; that is, the RESULTS
+of White’s move are composed from the (predictable) outcome of White’s own move and the
+unpredictable outcome given by Black’s reply.3
+Given a current belief state, White may ask, “Can I win the game?” For a partially
+observable game, the notion of a strategy is altered; instead of specifying a move to make
+for each possible move the opponent might make, we need a move for every possible percept
+sequence that might be received. For Kriegspiel, a winning strategy, or guaranteed check-
+GUARANTEED mate, is one that, for each possible percept sequence, leads to an actual checkmate for every
+
+CHECKMATE
+
+possible board state in the current belief state, regardless of how the opponent moves. With
+this de?nition, the opponent’s belief state is irrelevant—the strategy has to work even if the
+opponent can see all the pieces. This greatly simpli?es the computation. Figure 5.13 shows
+part of a guaranteed checkmate for the KRK (king and rook against king) endgame. In this
+case, Black has just one piece (the king), so a belief state for White can be shown in a single
+board by marking each possible position of the Black king.
+The general AND-OR search algorithm can be applied to the belief-state space to ?nd
+guaranteed checkmates, just as in Section 4.4. The incremental belief-state algorithm men-
+tioned in that section often ?nds midgame checkmates up to depth 9—probably well beyond
+the abilities of human players.
+In addition to guaranteed checkmates, Kriegspiel admits an entirely new concept that
+PROBABILISTIC makes no sense in fully observable games: probabilistic checkmate. Such checkmates are
+
+CHECKMATE
+
+still required to work in every board state in the belief state; they are probabilistic with respect
+to randomization of the winning player’s moves. To get the basic idea, consider the problem
+of ?nding a lone black king using just the white king. Simply by moving randomly, the
+white king will eventually bump into the black king even if the latter tries to avoid this fate,
+since Black cannot keep guessing the right evasive moves inde?nitely. In the terminology of
+probability theory, detection occurs with probability 1. The KBNK endgame—king, bishop
+
+3 Sometimes, the belief state will become too large to represent just as a list of board states, but we will ignore
+this issue for now; Chapters 7 and 8 suggest methods for compactly representing very large belief states.
+
+
+182 Chapter 5. Adversarial Search
+
+
+
+Figure 5.13 Part of a guaranteed checkmate in the KRK endgame, shown on a reduced
+board. In the initial belief state, Black’s king is in one of three possible locations. By a
+combination of probing moves, the strategy narrows this down to one. Completion of the
+checkmate is left as an exercise.
+
+and knight against king—is won in this sense; White presents Black with an in?nite random
+sequence of choices, for one of which Black will guess incorrectly and reveal his position,
+leading to checkmate. The KBBK endgame, on the other hand, is won with probability 1 - o.
+White can force a win only by leaving one of his bishops unprotected for one move. If
+Black happens to be in the right place and captures the bishop (a move that would lose if the
+bishops are protected), the game is drawn. White can choose to make the risky move at some
+randomly chosen point in the middle of a very long sequence, thus reducing o to an arbitrarily
+small constant, but cannot reduce o to zero.
+It is quite rare that a guaranteed or probabilistic checkmate can be found within any
+reasonable depth, except in the endgame. Sometimes a checkmate strategy works for some of
+the board states in the current belief state but not others. Trying such a strategy may succeed,
+ACCIDENTAL leading to an accidental checkmate—accidental in the sense that White could not know that
+
+CHECKMATE
+
+it would be checkmate—if Black’s pieces happen to be in the right places. (Most checkmates
+in games between humans are of this accidental nature.) This idea leads naturally to the
+question of how likely it is that a given strategy will win, which leads in turn to the question
+of how likely it is that each board state in the current belief state is the true board state.
+
+
+Section 5.6. Partially Observable Games 183
+
+One’s ?rst inclination might be to propose that all board states in the current belief state
+are equally likely—but this can’t be right. Consider, for example, White’s belief state after
+Black’s ?rst move of the game. By de?nition (assuming that Black plays optimally), Black
+must have played an optimal move, so all board states resulting from suboptimal moves ought
+to be assigned zero probability. This argument is not quite right either, because each player’s
+goal is not just to move pieces to the right squares but also to minimize the information that
+the opponent has about their location. Playing any predictable “optimal” strategy provides
+the opponent with information. Hence, optimal play in partially observable games requires
+a willingness to play somewhat randomly. (This is why restaurant hygiene inspectors do
+random inspection visits.) This means occasionally selecting moves that may seem “intrinsi-
+cally” weak—but they gain strength from their very unpredictability, because the opponent is
+unlikely to have prepared any defense against them.
+From these considerations, it seems that the probabilities associated with the board
+states in the current belief state can only be calculated given an optimal randomized strat-
+egy; in turn, computing that strategy seems to require knowing the probabilities of the var-
+ious states the board might be in. This conundrum can be resolved by adopting the game-
+theoretic notion of an equilibrium solution, which we pursue further in Chapter 17. An
+equilibrium speci?es an optimal randomized strategy for each player. Computing equilib-
+ria is prohibitively expensive, however, even for small games, and is out of the question for
+Kriegspiel. At present, the design of effective algorithms for general Kriegspiel play is an
+open research topic. Most systems perform bounded-depth lookahead in their own belief-
+state space, ignoring the opponent’s belief state. Evaluation functions resemble those for the
+observable game but include a component for the size of the belief state—smaller is better!
+
+5.6.2 Card games
+Card games provide many examples of stochastic partial observability, where the missing
+information is generated randomly. For example, in many games, cards are dealt randomly at
+the beginning of the game, with each player receiving a hand that is not visible to the other
+players. Such games include bridge, whist, hearts, and some forms of poker.
+At ?rst sight, it might seem that these card games are just like dice games: the cards are
+dealt randomly and determine the moves available to each player, but all the “dice” are rolled
+at the beginning! Even though this analogy turns out to be incorrect, it suggests an effective
+algorithm: consider all possible deals of the invisible cards; solve each one as if it were a
+fully observable game; and then choose the move that has the best outcome averaged over all
+the deals. Suppose that each deal s occurs with probability P (s); then the move we want is
+argmax
+
+a s
+
+P(s) MINIMAX(RESULT(s, a)) . (5.1)
+
+Here, we run exact MINIMAX if computationally feasible; otherwise, we run H-MINIMAX.
+Now, in most card games, the number of possible deals is rather large. For example,
+in bridge play, each player sees just two of the four hands; there are two unseen hands of 13
+
+cards each, so the number of deals is 26
+
+13 = 10, 400, 600. Solving even one deal is quite
+
+dif?cult, so solving ten million is out of the question. Instead, we resort to a Monte Carlo
+
+
+184 Chapter 5. Adversarial Search
+
+approximation: instead of adding up all the deals, we take a random sample of N deals,
+where the probability of deal s appearing in the sample is proportional to P (s):
+
+argmax
+a
+
+1
+N
+
+N
+
+i = 1
+
+MINIMAX(RESULT(si, a)) . (5.2)
+
+(Notice that P(s) does not appear explicitly in the summation, because the samples are al-
+ready drawn according to P(s).) As N grows large, the sum over the random sample tends
+to the exact value, but even for fairly small N—say, 100 to 1,000—the method gives a good
+approximation. It can also be applied to deterministic games such as Kriegspiel, given some
+reasonable estimate of P(s).
+For games like whist and hearts, where there is no bidding or betting phase before play
+commences, each deal will be equally likely and so the values of P (s) are all equal. For
+bridge, play is preceded by a bidding phase in which each team indicates how many tricks it
+expects to win. Since players bid based on the cards they hold, the other players learn more
+about the probability of each deal. Taking this into account in deciding how to play the hand
+is tricky, for the reasons mentioned in our description of Kriegspiel: players may bid in such
+a way as to minimize the information conveyed to their opponents. Even so, the approach is
+quite effective for bridge, as we show in Section 5.7.
+The strategy described in Equations 5.1 and 5.2 is sometimes called averaging over
+clairvoyance because it assumes that the game will become observable to both players im-
+mediately after the ?rst move. Despite its intuitive appeal, the strategy can lead one astray.
+Consider the following story:
+Day 1: Road A leads to a heap of gold; Road B leads to a fork. Take the left fork and
+you’ll ?nd a bigger heap of gold, but take the right fork and you’ll be run over by a bus.
+Day 2: Road A leads to a heap of gold; Road B leads to a fork. Take the right fork and
+you’ll ?nd a bigger heap of gold, but take the left fork and you’ll be run over by a bus.
+Day 3: Road A leads to a heap of gold; Road B leads to a fork. One branch of the
+fork leads to a bigger heap of gold, but take the wrong fork and you’ll be hit by a bus.
+Unfortunately you don’t know which fork is which.
+Averaging over clairvoyance leads to the following reasoning: on Day 1, B is the right choice;
+on Day 2, B is the right choice; on Day 3, the situation is the same as either Day 1 or Day 2,
+so B must still be the right choice.
+Now we can see how averaging over clairvoyance fails: it does not consider the belief
+state that the agent will be in after acting. A belief state of total ignorance is not desirable, es-
+pecially when one possibility is certain death. Because it assumes that every future state will
+automatically be one of perfect knowledge, the approach never selects actions that gather in-
+formation (like the ?rst move in Figure 5.13); nor will it choose actions that hide information
+from the opponent or provide information to a partner because it assumes that they already
+BLUFF know the information; and it will never bluff in poker,4 because it assumes the opponent can
+see its cards. In Chapter 17, we show how to construct algorithms that do all these things by
+virtue of solving the true partially observable decision problem.
+4 Bluf?ng—betting as if one’s hand is good, even when it’s not—is a core part of poker strategy.
+
+
+Section 5.7. State-of-the-Art Game Programs 185
+
+5.7 STATE-OF-THE-ART GAME PROGRAMS
+
+In 1965, the Russian mathematician Alexander Kronrod called chess “the Drosophila of ar-
+ti?cial intelligence.” John McCarthy disagrees: whereas geneticists use fruit ?ies to make
+discoveries that apply to biology more broadly, AI has used chess to do the equivalent of
+breeding very fast fruit ?ies. Perhaps a better analogy is that chess is to AI as Grand Prix
+motor racing is to the car industry: state-of-the-art game programs are blindingly fast, highly
+optimized machines that incorporate the latest engineering advances, but they aren’t much
+use for doing the shopping or driving off-road. Nonetheless, racing and game-playing gen-
+erate excitement and a steady stream of innovations that have been adopted by the wider
+community. In this section we look at what it takes to come out on top in various games.
+CHESS Chess: IBM’s DEEP BLUE chess program, now retired, is well known for defeating world
+champion Garry Kasparov in a widely publicized exhibition match. Deep Blue ran on a par-
+allel computer with 30 IBM RS/6000 processors doing alpha–beta search. The unique part
+was a con?guration of 480 custom VLSI chess processors that performed move generation
+and move ordering for the last few levels of the tree, and evaluated the leaf nodes. Deep Blue
+searched up to 30 billion positions per move, reaching depth 14 routinely. The key to its
+success seems to have been its ability to generate singular extensions beyond the depth limit
+for suf?ciently interesting lines of forcing/forced moves. In some cases the search reached a
+depth of 40 plies. The evaluation function had over 8000 features, many of them describing
+highly speci?c patterns of pieces. An “opening book” of about 4000 positions was used, as
+well as a database of 700,000 grandmaster games from which consensus recommendations
+could be extracted. The system also used a large endgame database of solved positions con-
+taining all positions with ?ve pieces and many with six pieces. This database had the effect
+of substantially extending the effective search depth, allowing Deep Blue to play perfectly in
+some cases even when it was many moves away from checkmate.
+The success of DEEP BLUE reinforced the widely held belief that progress in computer
+game-playing has come primarily from ever-more-powerful hardware—a view encouraged
+by IBM. But algorithmic improvements have allowed programs running on standard PCs
+to win World Computer Chess Championships. A variety of pruning heuristics are used to
+reduce the effective branching factor to less than 3 (compared with the actual branching factor
+NULL MOVE of about 35). The most important of these is the null move heuristic, which generates a good
+lower bound on the value of a position, using a shallow search in which the opponent gets
+to move twice at the beginning. This lower bound often allows alpha–beta pruning without
+FUTILITY PRUNING the expense of a full-depth search. Also important is futility pruning, which helps decide in
+advance which moves will cause a beta cutoff in the successor nodes.
+HYDRA can be seen as the successor to DEEP BLUE. HYDRA runs on a 64-processor
+cluster with 1 gigabyte per processor and with custom hardware in the form of FPGA (Field
+Programmable Gate Array) chips. HYDRA reaches 200 million evaluations per second, about
+the same as Deep Blue, but HYDRA reaches 18 plies deep rather than just 14 because of
+aggressive use of the null move heuristic and forward pruning.
+
+
+186 Chapter 5. Adversarial Search
+
+RYBKA, winner of the 2008 and 2009 World Computer Chess Championships, is con-
+sidered the strongest current computer player. It uses an off-the-shelf 8-core 3.2 GHz Intel
+Xeon processor, but little is known about the design of the program. RYBKA’s main ad-
+vantage appears to be its evaluation function, which has been tuned by its main developer,
+International Master Vasik Rajlich, and at least three other grandmasters.
+The most recent matches suggest that the top computer chess programs have pulled
+ahead of all human contenders. (See the historical notes for details.)
+CHECKERS Checkers: Jonathan Schaeffer and colleagues developed CHINOOK, which runs on regular
+PCs and uses alpha–beta search. Chinook defeated the long-running human champion in an
+abbreviated match in 1990, and since 2007 CHINOOK has been able to play perfectly by using
+alpha–beta search combined with a database of 39 trillion endgame positions.
+OTHELLO Othello, also called Reversi, is probably more popular as a computer game than as a board
+game. It has a smaller search space than chess, usually 5 to 15 legal moves, but evaluation
+expertise had to be developed from scratch. In 1997, the LOGISTELLO program (Buro, 2002)
+defeated the human world champion, Takeshi Murakami, by six games to none. It is generally
+acknowledged that humans are no match for computers at Othello.
+BACKGAMMON Backgammon: Section 5.5 explained why the inclusion of uncertainty from dice rolls makes
+deep search an expensive luxury. Most work on backgammon has gone into improving the
+evaluation function. Gerry Tesauro (1992) combined reinforcement learning with neural
+networks to develop a remarkably accurate evaluator that is used with a search to depth 2
+or 3. After playing more than a million training games against itself, Tesauro’s program,
+TD-GAMMON, is competitive with top human players. The program’s opinions on the open-
+ing moves of the game have in some cases radically altered the received wisdom.
+GO Go is the most popular board game in Asia. Because the board is 19 × 19 and moves are
+allowed into (almost) every empty square, the branching factor starts at 361, which is too
+daunting for regular alpha–beta search methods. In addition, it is dif?cult to write an eval-
+uation function because control of territory is often very unpredictable until the endgame.
+Therefore the top programs, such as MOGO, avoid alpha–beta search and instead use Monte
+Carlo rollouts. The trick is to decide what moves to make in the course of the rollout. There is
+no aggressive pruning; all moves are possible. The UCT (upper con?dence bounds on trees)
+method works by making random moves in the ?rst few iterations, and over time guiding
+the sampling process to prefer moves that have led to wins in previous samples. Some tricks
+are added, including knowledge-based rules that suggest particular moves whenever a given
+pattern is detected and limited local search to decide tactical questions. Some programs also
+COMBINATORIAL include special techniques from combinatorial game theory to analyze endgames. These
+
+GAME THEORY
+
+techniques decompose a position into sub-positions that can be analyzed separately and then
+combined (Berlekamp and Wolfe, 1994; M¨
+
+uller, 2003). The optimal solutions obtained in
+this way have surprised many professional Go players, who thought they had been playing
+optimally all along. Current Go programs play at the master level on a reduced 9 × 9 board,
+but are still at advanced amateur level on a full board.
+BRIDGE Bridge is a card game of imperfect information: a player’s cards are hidden from the other
+players. Bridge is also a multiplayer game with four players instead of two, although the
+
+
+Section 5.8. Alternative Approaches 187
+
+players are paired into two teams. As in Section 5.6, optimal play in partially observable
+games like bridge can include elements of information gathering, communication, and careful
+weighing of probabilities. Many of these techniques are used in the Bridge Baron program
+(Smith et al., 1998), which won the 1997 computer bridge championship. While it does
+not play optimally, Bridge Baron is one of the few successful game-playing systems to use
+complex, hierarchical plans (see Chapter 11) involving high-level ideas, such as ?nessing and
+squeezing, that are familiar to bridge players.
+The GIB program (Ginsberg, 1999) won the 2000 computer bridge championship quite
+decisively using the Monte Carlo method. Since then, other winning programs have followed
+EXPLANATION- GIB’s lead. GIB’s major innovation is using explanation-based generalization to compute
+
+BASED
+GENERALIZATION
+
+and cache general rules for optimal play in various standard classes of situations rather than
+evaluating each situation individually. For example, in a situation where one player has the
+cards A-K-Q-J-4-3-2 of one suit and another player has 10-9-8-7-6-5, there are 7 × 6 = 42
+ways that the ?rst player can lead from that suit and the second player can follow. But GIB
+treats these situations as just two: the ?rst player can lead either a high card or a low card;
+the exact cards played don’t matter. With this optimization (and a few others), GIB can solve
+a 52-card, fully observable deal exactly in about a second. GIB’s tactical accuracy makes up
+for its inability to reason about information. It ?nished 12th in a ?eld of 35 in the par contest
+(involving just play of the hand, not bidding) at the 1998 human world championship, far
+exceeding the expectations of many human experts.
+There are several reasons why GIB plays at expert level with Monte Carlo simulation,
+whereas Kriegspiel programs do not. First, GIB’s evaluation of the fully observable version
+of the game is exact, searching the full game tree, while Kriegspiel programs rely on inexact
+heuristics. But far more important is the fact that in bridge, most of the uncertainty in the
+partially observable information comes from the randomness of the deal, not from the adver-
+sarial play of the opponent. Monte Carlo simulation handles randomness well, but does not
+always handle strategy well, especially when the strategy involves the value of information.
+SCRABBLE Scrabble: Most people think the hard part about Scrabble is coming up with good words, but
+given the of?cial dictionary, it turns out to be rather easy to program a move generator to ?nd
+the highest-scoring move (Gordon, 1994). That doesn’t mean the game is solved, however:
+merely taking the top-scoring move each turn results in a good but not expert player. The
+problem is that Scrabble is both partially observable and stochastic: you don’t know what
+letters the other player has or what letters you will draw next. So playing Scrabble well
+combines the dif?culties of backgammon and bridge. Nevertheless, in 2006, the QUACKLE
+program defeated the former world champion, David Boys, 3–2.
+
+5.8 ALTERNATIVE APPROACHES
+
+Because calculating optimal decisions in games is intractable in most cases, all algorithms
+must make some assumptions and approximations. The standard approach, based on mini-
+max, evaluation functions, and alpha–beta, is just one way to do this. Probably because it has
+
+
+188 Chapter 5. Adversarial Search
+
+
+Figure 5.14 A two-ply game tree for which heuristic minimax may make an error.
+
+been worked on for so long, the standard approach dominates other methods in tournament
+play. Some believe that this has caused game playing to become divorced from the main-
+stream of AI research: the standard approach no longer provides much room for new insight
+into general questions of decision making. In this section, we look at the alternatives.
+First, let us consider heuristic minimax. It selects an optimal move in a given search
+tree provided that the leaf node evaluations are exactly correct. In reality, evaluations are
+usually crude estimates of the value of a position and can be considered to have large errors
+associated with them. Figure 5.14 shows a two-ply game tree for which minimax suggests
+taking the right-hand branch because 100 > 99. That is the correct move if the evaluations
+are all correct. But of course the evaluation function is only approximate. Suppose that
+the evaluation of each node has an error that is independent of other nodes and is randomly
+distributed with mean zero and standard deviation of s. Then when s = 5, the left-hand
+branch is actually better 71% of the time, and 58% of the time when s = 2. The intuition
+behind this is that the right-hand branch has four nodes that are close to 99; if an error in
+the evaluation of any one of the four makes the right-hand branch slip below 99, then the
+left-hand branch is better.
+In reality, circumstances are actually worse than this because the error in the evaluation
+function is not independent. If we get one node wrong, the chances are high that nearby nodes
+in the tree will also be wrong. The fact that the node labeled 99 has siblings labeled 1000
+suggests that in fact it might have a higher true value. We can use an evaluation function
+that returns a probability distribution over possible values, but it is dif?cult to combine these
+distributions properly, because we won’t have a good model of the very strong dependencies
+that exist between the values of sibling nodes
+Next, we consider the search algorithm that generates the tree. The aim of an algorithm
+designer is to specify a computation that runs quickly and yields a good move. The alpha–beta
+algorithm is designed not just to select a good move but also to calculate bounds on the values
+of all the legal moves. To see why this extra information is unnecessary, consider a position
+in which there is only one legal move. Alpha–beta search still will generate and evaluate a
+large search tree, telling us that the only move is the best move and assigning it a value. But
+since we have to make the move anyway, knowing the move’s value is useless. Similarly, if
+there is one obviously good move and several moves that are legal but lead to a quick loss, we
+
+
+Section 5.9. Summary 189
+
+would not want alpha–beta to waste time determining a precise value for the lone good move.
+Better to just make the move quickly and save the time for later. This leads to the idea of the
+utility of a node expansion. A good search algorithm should select node expansions of high
+utility—that is, ones that are likely to lead to the discovery of a signi?cantly better move. If
+there are no node expansions whose utility is higher than their cost (in terms of time), then
+the algorithm should stop searching and make a move. Notice that this works not only for
+clear-favorite situations but also for the case of symmetrical moves, for which no amount of
+search will show that one move is better than another.
+METAREASONING This kind of reasoning about what computations to do is called metareasoning (rea-
+soning about reasoning). It applies not just to game playing but to any kind of reasoning
+at all. All computations are done in the service of trying to reach better decisions, all have
+costs, and all have some likelihood of resulting in a certain improvement in decision quality.
+Alpha–beta incorporates the simplest kind of metareasoning, namely, a theorem to the effect
+that certain branches of the tree can be ignored without loss. It is possible to do much better.
+In Chapter 16, we see how these ideas can be made precise and implementable.
+Finally, let us reexamine the nature of search itself. Algorithms for heuristic search
+and for game playing generate sequences of concrete states, starting from the initial state
+and then applying an evaluation function. Clearly, this is not how humans play games. In
+chess, one often has a particular goal in mind—for example, trapping the opponent’s queen—
+and can use this goal to selectively generate plausible plans for achieving it. This kind of
+goal-directed reasoning or planning sometimes eliminates combinatorial search altogether.
+David Wilkins’ (1980) PARADISE is the only program to have used goal-directed reasoning
+successfully in chess: it was capable of solving some chess problems requiring an 18-move
+combination. As yet there is no good understanding of how to combine the two kinds of
+algorithms into a robust and ef?cient system, although Bridge Baron might be a step in the
+right direction. A fully integrated system would be a signi?cant achievement not just for
+game-playing research but also for AI research in general, because it would be a good basis
+for a general intelligent agent.
